@@ -1,0 +1,38 @@
+import Groq from "groq-sdk";
+
+const groq = new Groq({
+  apiKey: process.env.GROQ_API_KEY,
+});
+export const correctSpelling = async (text) => {
+  const response = await groq.chat.completions.create({
+    model: "openai/gpt-oss-20b",
+    temperature: 0,
+
+    messages: [
+      {
+        role: "system",
+        content: `
+Correct ONLY obvious spelling mistakes.
+
+Do not:
+- change meaning
+- rewrite sentences
+- add information
+- remove information
+- change numbers
+- change dates
+-  change capitalization.
+- change city names unless clearly misspelled
+
+Return ONLY the corrected text.
+        `,
+      },
+      {
+        role: "user",
+        content: text,
+      },
+    ],
+  });
+
+  return response.choices[0].message.content.trim();
+};
