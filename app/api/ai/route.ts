@@ -13,8 +13,10 @@ export async function POST(req: NextRequest) {
     };
           console.log('Hitted routeai')
     const manager = getWorkerManager();
-
+          
     const jobId = randomUUID();
+
+       console.log('in ai route')
 
     const resultPromise = new Promise((resolve, reject) => {
       manager.pending.set(jobId, {

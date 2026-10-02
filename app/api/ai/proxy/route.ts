@@ -15,11 +15,12 @@ export async function POST(req: NextRequest) {
   } catch {
     return  NextResponse.json({message : "Invalid token", status : 401}, { status: 401 });
   }
+console.log("1. proxy");
 
 
   // 🔁 forward request to actual handler
   const url = new URL("/api/ai", req.url);
-         console.log(url , 'URL')
+         console.log(url , 'URL - ')
   const proxyReq = new Request(url, {
     method: req.method,
     headers: {
