@@ -1,29 +1,31 @@
 import { fork } from "child_process";
 import path from "path";
 
-let manager = null;
+
 
 export function getWorkerManager() {
-  // Return the existing worker-manager if it has already been created
   if (manager) {
     return manager;
   }
 
-  // Start the worker-manager process
-  const child = fork(path.resolve("./dist-worker/worker-manage.js"));
+  const workerPath = path.join(
+  process.cwd(),
+  "dist-worker",
+  "worker-manage.js"
+);
+  console.log("Starting worker:", workerPath);
 
-  // Stores pending requests keyed by jobId
+  const child = fork(workerPath);
+
   const pending = new Map();
 
-  // Handle responses from the worker-manager
   child.on("message", (msg) => {
     const { jobId, result, error } = msg;
 
     const task = pending.get(jobId);
 
-    if (!task) return ;                                   
+    if (!task) return;
 
-    // Remove completed request
     pending.delete(jobId);
 
     if (error) {
@@ -33,12 +35,9 @@ export function getWorkerManager() {
     }
   });
 
-   
-  // Worker-manager crashed
   child.on("error", (err) => {
-    console.error("Worker manager crashed:", err);
+    console.error("Worker manager error:", err);
 
-    // Reject all pending requests
     for (const [, task] of pending) {
       task.reject(err);
     }
@@ -47,13 +46,11 @@ export function getWorkerManager() {
     manager = null;
   });
 
-  // Worker-manager exited
   child.on("exit", (code) => {
     console.log(`Worker manager exited with code ${code}`);
 
-    // Reject all pending requests
     for (const [, task] of pending) {
-      task.reject(new Error("Worker manager exited"));
+      task.reject(new Error(`Worker manager exited with code ${code}`));
     }
 
     pending.clear();

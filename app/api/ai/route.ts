@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
-import { randomUUID } from "crypto";
-import { getWorkerManager } from "@/dist-worker/worker-manager-client.js";
+import { NextRequest, NextResponse } from "next/server" ;
+import { randomUUID } from "crypto" ;
+import { getWorkerManager } from "../../../server/worker-manager-client" ;
 
 export async function POST(req: NextRequest) {
   try {
