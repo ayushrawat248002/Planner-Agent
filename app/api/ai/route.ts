@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
       role: req.headers.get("x-user-role"),
       messages,
     };
-
+          console.log('Hitted routeai')
     const manager = getWorkerManager();
 
     const jobId = randomUUID();

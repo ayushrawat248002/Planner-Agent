@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
   // 🔁 forward request to actual handler
   const url = new URL("/api/ai", req.url);
-
+         console.log(url , 'URL')
   const proxyReq = new Request(url, {
     method: req.method,
     headers: {
