@@ -27,16 +27,106 @@ const Tools = {
     search_flights: searchFlights,
     search_hotels: searchHotels,
     book_hotel: bookHotel,
+};    
+const mergeArgs = (presentargs, prevargs, reqId, prevId) => {
+  console.log(presentargs, prevargs, reqId, prevId);
+
+  // Different request → don't merge
+  if (reqId !== prevId) {
+    return presentargs;
+  }
+
+  // Check whether the two searches form a round trip
+  const reverseRoute =
+    presentargs.from?.toLowerCase() === prevargs.to?.toLowerCase() &&
+    presentargs.to?.toLowerCase() === prevargs.from?.toLowerCase();
+
+  if (!reverseRoute) {
+    return presentargs;
+  }
+
+  // Both have departure dates but neither has a return date
+  if (
+    !presentargs.return_date &&
+    !prevargs.return_date &&
+    presentargs.depart_date &&
+    prevargs.depart_date
+  ) {
+    const presentDate = presentargs.depart_date;
+    const previousDate = prevargs.depart_date;
+
+    // Present date is after previous date
+    if (presentDate > previousDate) {
+      return {
+        ...prevargs,
+        return_date: presentDate,
+        oneway: false
+      };
+    }
+
+    // Present date is before previous date
+    return {
+      ...prevargs,
+      depart_date: presentDate,
+      return_date: previousDate,
+      oneway: false
+    };
+  }
+
+  return presentargs;
 };
-function configureWorkflow(step, result, workflow, domain) {
+
+
+function configureWorkflow(step, result, workflow, domain, reqId) {
+    const previousReqId = workflow.reqId;
+
+    const isSameRequest = previousReqId === reqId;
+
+    workflow.reqId = reqId;
     workflow.domain = domain;
     workflow.activeTask = step;
+
     const missing = result.missing;
-    if(missing)workflow.missing = missing
+
+    if (missing) {
+        workflow.missing = missing;
+    }
+
+    const previousResults =
+        workflow[step]?.results?.result ?? [];
+
+    const prevargs =
+        workflow[step]?.results?.args ?? {};
+
+    // Only flight searches can be merged
+    const finalArgs =
+        step === 'search_flights'
+            ? mergeArgs(
+                result.args,
+                prevargs,
+                reqId,
+                previousReqId
+            )
+            : result.args;
+
+    console.log("Previous args:", prevargs);
+    console.log("Current args:", result.args);
+    console.log("Final args:", finalArgs);
 
     workflow[step] = {
- 
-        results: {result : result.data ??  [], args: result.args,},
+        results: {
+            result: isSameRequest
+                ? [
+                    ...previousResults,
+                    ...(result.data ?? [])
+                ]
+                : typeof result.data === 'string' ? result.data  : [
+                    ...(result.data ?? [])
+                ],
+
+            args: finalArgs
+        },
+
         success: result.success,
     };
 
@@ -47,9 +137,10 @@ function configureWorkflow(step, result, workflow, domain) {
     if (result.success) {
         workflow.completedTasks.push(step);
         workflow.pendingStep = null;
-        workflow.missing = null
+        workflow.missing = null;
     } else {
-          workflow.missing = result.missing
+        workflow.missing = result.missing;
+
         workflow.pendingStep = {
             tool: step,
             args: result.args,
@@ -76,7 +167,8 @@ const summarizeResults = (workflowContext) => {
     }
     return sections;
 };
-async function runAdaptiveAgent(userMessageArray, usermessage, fn, userId) {
+async function runAdaptiveAgent(userMessageArray, usermessage, fn, userId, reqId) {
+          console.log(userId)
      const userMessage = await correctSpelling(usermessage);
   
     
@@ -116,7 +208,8 @@ async function runAdaptiveAgent(userMessageArray, usermessage, fn, userId) {
            console.log(replanned, 'replanner')
         //    { steps: [ { tool: 'search_flights', args: [Object] } ] }
 
-        remainingSteps = stepsLeft && Object.keys(stepsLeft).length > 0 ? [...replanned.steps, ...stepsLeft] : replanned.steps
+        remainingSteps = stepsLeft && Object.keys(stepsLeft).length > 0 ? [...replanned.steps, ...stepsLeft] : replanned.steps;
+         await redis.del(`Userworkflow${userId}`)
         }
     /*
     ==========================================
@@ -351,14 +444,23 @@ async function runAdaptiveAgent(userMessageArray, usermessage, fn, userId) {
       
         let result = await toolFn(step.args || {});
         console.log(result, 'RESULT');
-        if (Array.isArray(result)) {
+        if (Array.isArray(result.data)) {
+                 if(result.data.length === 2){
+              const arr1 = result.data[0].data ?? [];
+              const arr2 = result.data[1].data ?? [];
+                 
             result = {
-                ...result[0],
-                data: [...result[1].data, ...result[0].data,]
+                ...result,
+                data: [   ...arr1 , ...arr2]
             };
+        }else{
+              result = {
+                ...result,
+                data: [ ...result.data] 
+        }
         }
         console.log(result, 'RESULT');
-      
+    }
         /*
         ----------------------------------------
         TOOL FAILURE
@@ -366,7 +468,7 @@ async function runAdaptiveAgent(userMessageArray, usermessage, fn, userId) {
         */
       
      
-          configureWorkflow(result.tool, result, workflowContext, domain);
+          configureWorkflow(result.tool, result, workflowContext, domain, reqId);
 
                   if (!result.success) {
      

@@ -28,8 +28,7 @@ const indianCities = [
 
 
   let words = text.toLowerCase().split(/\s+/);
-            
- 
+  
 
        if(words.includes('change') && words.includes('and') ){
             const indexAnd = words.indexOf('and')
@@ -47,17 +46,27 @@ const indianCities = [
 
                    
 
-       }
+  }
 
         if(words.includes('change')){
-          console.log(words , 'HITT')
-          return
+        
+          return null;
         }
 
 
-
+      let alreadyHave = false;
       let from  = updated.userlocation;
       let to  = updated.location ;
+                 
+   if((words.includes('make') || words.includes('plan') || words.includes('trip') || (words.includes('create'))) && (words.includes('for') || words.includes('of'))){
+                           const city =  words.filter((word) => indianCities.includes(word))
+                             if(city )return{
+                              from : null,
+                              to,
+                              newplan : true
+                             };
+                   }
+     
       let spare = [];
         let curr;
         words.forEach((word) => {
@@ -73,23 +82,43 @@ const indianCities = [
                                      spare.push(word)
                          }
         })
-       if(spare.length >= 1){
-          if(from){
-               to = spare[spare.length - 1]
-          }else{
-                if((words.includes('make') || words.includes('plan') || words.includes('trip') || (words.includes('create'))) && (words.includes('for') || words.includes('of'))){
-                           const city =  words.filter((word) => indianCities.includes(word))
-                             if(city )return{
-                              from : null,
-                              to,
-                              newplan : true
-                             };
-                   }else{
-                      from = spare[spare.length-1];
-                      
-                   }
+     
           
-          }
+       if(spare.length >= 1){
+            const Locationregex =
+  /\b(?:destination|travel\s+location|travel\s+destination|trip\s+location|trip\s+destination|holiday\s+destination|vacation\s+destination|place\s+to\s+visit|place\s+of\s+travel|travel\s+place|destination\s+city|travel\s+city|arrival\s+city|arrival\s+location|arrival\s+place|going\s+to|travelling\s+to|traveling\s+to|headed\s+to|heading\s+to|visiting|visit|stay(?:ing)?\s+in|going\s+to\s+be\s+in)\b/i;
+                
+                 const doesMatch = Locationregex.test(text);
+                      if(doesMatch){
+                              to = spare[spare.length - 1]
+                      }
+                      if(!doesMatch && !from && to){
+                         from = spare[spare.length - 1]
+                      }
+                      console.log(from,to, 'sds')
+                      
+                      const UserLocationRegex =
+  /\b(?:my\s+(?:location|current\s+location|present\s+location|place|city|home)|current\s+(?:location|place|city)|present\s+(?:location|place|city)|where\s+(?:i\s+am|am\s+i)|from\s+(?:my\s+(?:location|city|place)|where\s+i\s+(?:am|['’]?m))|leaving\s+from\s+home|starting\s+from\s+home|near\s+me|from\s+here)\b/i;
+                       const doesMatchUser = UserLocationRegex.test(text);
+                       if(doesMatchUser){
+                           from = spare[spare.length - 1 ];
+                       }
+                       if(!doesMatchUser && from && !to){
+                       
+                               to =  spare[spare.length - 1]
+                              
+                       }
+                          from && to ? alreadyHave = true : alreadyHave = false;  
+                        
+                       if(!alreadyHave){
+                       
+                    from = spare[0];
+                    to = spare[spare.length - 1]
+                       }
+                   
+                    
+          
+          
        }
   return {
     from,
@@ -124,7 +153,7 @@ const indianCities = [
 
 
 const normalizeText = (text = "") => {
-  console.log(text)
+
   return text
     .toLowerCase()
     .replace(/\s+/g, " ")
@@ -143,7 +172,7 @@ const NewPlanner = (text, updated) => {
   /\b(?:make|create|plan|prepare|organize|build|design)\b(?:\s+(?:a|an|my|new|the|travel|new\s+travel))*\s+\b(?:plan|trip|itinerary|vacation|holiday|journey|getaway)\b/i;
 
 const planMatch = text.match(planRegex);
-       console.log(planMatch, 'masdasd')
+
 if (planMatch) {
   const afterPlan = text
     .slice(planMatch.index + planMatch[0].length)
@@ -162,7 +191,7 @@ if (planMatch) {
                             
                                     if(indianCities.includes(word) && index < toindex){
                                             fromcity = word
-                                            console.log(fromcity)
+                                        
                                     }else{
                                         if(indianCities.includes(word)){
                                       tocity = word
@@ -182,7 +211,8 @@ if (planMatch) {
 
 const locationchange =  (text, updated) => {
           const locationRegex =
-                  /(?:userlocation|current location|current city|my city|my location)/i;
+                   /\b(?:my\s+(?:location|current\s+location|present\s+location|place|city|home)|current\s+(?:location|place|city)|present\s+(?:location|place|city)|where\s+(?:i\s+am|am\s+i)|from\s+(?:my\s+(?:location|city|place)|where\s+i\s+(?:am|['’]?m))|leaving\s+from\s+home|starting\s+from\s+home|near\s+me|from\s+here)\b/i;
+                     
 
                   const hasChange = /\bchange\b/i.test(text);
                 const locationMatch = text.match(locationRegex);
@@ -192,7 +222,7 @@ const locationchange =  (text, updated) => {
                                                    
                             if (hasChange && locationMatch) {
                                    const toindex = text.split(' ').indexOf('to');
-                                   console.log(toindex)
+                            
                                         let city;
                                    if(toindex){
 
@@ -202,7 +232,7 @@ const locationchange =  (text, updated) => {
                                  city = after.split(' ').filter((word) => indianCities.includes(word));
                             
                                    }
-                                        console.log(city)
+                                      
                                        if(city)updated.userlocation = city[0];
 
 
@@ -213,10 +243,10 @@ const locationchange =  (text, updated) => {
 
 const destinationChange = (text, updated) => {
                       const changeLocationRegex =
-  /\bchange\b.*?\b(?:destination|travel\s+city)\b/i;
+    /\b(?:destination|travel\s+location|travel\s+destination|trip\s+location|trip\s+destination|holiday\s+destination|vacation\s+destination|place\s+to\s+visit|place\s+of\s+travel|travel\s+place|destination\s+city|travel\s+city|arrival\s+city|arrival\s+location|arrival\s+place|going\s+to|travelling\s+to|traveling\s+to|headed\s+to|heading\s+to|visiting|visit|stay(?:ing)?\s+in|going\s+to\s+be\s+in)\b/i;
 
 const match = text.match(changeLocationRegex);
- 
+   
 if (match) {
   // Position immediately after "location", "destination", or "travel city"
   const afterIndex = match.index + match[0].length;
@@ -229,15 +259,15 @@ if (match) {
                   }else{
                        const extractedCity = after.split(' ').filter((word) => indianCities.includes(word));
                     updated.location = extractedCity[0]
-                  }
-              
+        }
+
 }
   
   return;
 }
 
    export const modifyPlan = (text, args, missing = []) => {
-        console.log(missing, 'MISSING FIELDS')
+     
   const normalized = normalizeText(text);
 
   const updated = {
@@ -245,80 +275,51 @@ if (match) {
   };
 
           const splittedArr = text.split(' ');
-    
-      const { to , from, newplan} = extractRoute(text, updated);
-      console.log(from, to ,newplan)
-                  if(from && !splittedArr.includes('change')) updated.userlocation = from
-                   if(to && !splittedArr.includes('change') )updated.location = to
-                           
-               
+          
+      const args1 = extractRoute(text, updated);
+      
+        if(args1){
+         const {from , to, newplan} = args1
+             
+                   updated.userlocation = from
+                   updated.location = to
+                          
+        
                        if(newplan){
                         NewPlanner(text, updated)
-                       }                
-                            
-             if(updated.userlocation || updated.location){
+                       }        
+                       
+                     
+                    
+            //  if(updated.userlocation || updated.location){
                                
-              NewPlanner(text, updated, newplan);
+            //   NewPlanner(text, updated, newplan);
 
 
-                          locationchange(text, updated)
+            //               locationchange(text, updated)
 
-                            destinationChange(text, updated)
+            //                 destinationChange(text, updated)
              
-             }
-     
+             
+            // }
+        }
 
-           const checkingpoint1 = check(updated);
 
-if (checkingpoint1) {
-  if (missing.includes("userlocation") && updated.userlocation) {
-    const index = missing.indexOf("userlocation");
+          locationchange(text,updated);
+                       destinationChange(text,updated)
 
-    if (index !== -1) {
-      missing.splice(index, 1);
-    }
-
-  }
-}
+         
+    
 
                  
 
-            if(!from && missing.includes('userlocation') && !updated.userlocation && !newplan && ((!splittedArr.includes('location') || !splittedArr.includes('destination') || !splittedArr.includes('travel city')) && !splittedArr.includes('change'))){
-              const location = text.split(' ').filter((word) => {  if(indianCities.includes(word)){return word}} );
-                       
-                       updated.userlocation = location ?? null;
-                               
-    }                                                          
-     
-
-  if (
-    missing.includes("location") &&
-    !to &&
-    !updated.location
-  ) {
-     const location = text.split(' ').filter((word) => {  if(indianCities.includes(word)){return word}} );
-    updated.location = location[0] ? location[0] === updated.userlocation ? null  : location[0] : null
-  }
-   
-         const checkingpoint2 = check(updated);
-
-if (checkingpoint2) {
-  if (missing.includes("userlocation") && updated.userlocation) {
-    const index = missing.indexOf("userlocation");
-
-    if (index !== -1) {
-      missing.splice(index, 1);
-    }
-
-  }
-}
-
+                                            
     
 
   const durationMatch = normalized.match(
   /\b(\d+)\s*days?\b/i
 );
-
+      
   
   if (durationMatch) {
   
@@ -332,7 +333,7 @@ if (checkingpoint2) {
 
   if (weekMatch) {
     updated.duration = Number(weekMatch[1]) * 7;
-  }
+    }
     
 
   /*
@@ -344,7 +345,7 @@ if (checkingpoint2) {
   if (price !== undefined) {
     updated.budget = price;
   }
-    
+
 
 
   const interestMatch = text.match(
@@ -357,5 +358,4 @@ if (checkingpoint2) {
     
 
   return updated;
-};
-  
+   }

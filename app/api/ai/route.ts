@@ -7,15 +7,15 @@ export async function POST(req: NextRequest) {
     const { messages } = await req.json();
 
     const job = {
-      id: req.headers.get("x-user-id"),
       role: req.headers.get("x-user-role"),
+      id : req.headers.get('x-userId'),
       messages,
     };
           console.log('Hitted routeai')
     const manager = getWorkerManager();
           
     const jobId = randomUUID();
-
+        console.log(jobId)
        console.log('in ai route')
 
     const resultPromise = new Promise((resolve, reject) => {
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
     const result = await resultPromise;
 
-    return NextResponse.json(result);
+    return NextResponse.json({result : result, userId : job.id});
   } catch (err) {
     return NextResponse.json(
       {

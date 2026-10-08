@@ -1,3 +1,5 @@
+import { flightsData } from "./demodata.js";
+
 const VALID_AIRPORTS = [] = [
     "Delhi",
     "Tokyo",
@@ -24,62 +26,100 @@ const CITY_TO_BOOKING = {
     kolkata: "CCU.AIRPORT",
     tokyo: "NRT.AIRPORT",
 };
+ const calcDTime = (time,args) => {
+             const a = time.split('T');
+                     a[0] = args.depart_date;
+                     return a.join(' ');
+}
+
+const calcATime = (departingTime,time,args) => {
+                let b ;
+               const a = time.split('T');
+            
+                    b = departingTime.split(' ');
+                      if(!args.return_date){
+                             const splitB = b[0].split('-');
+                                 const splitATime = a[1].split(':');
+                                 const splitBTime = b[1].split(':');
+                                         if(splitATime > splitBTime){
+                                                a[0] = b[0]
+                                         }else{
+                                             const newDate =  parseInt(splitB[splitB.length - 1]) + 1;
+                                                 splitB[splitB.length - 1] = newDate;
+                                                 a[0] = splitB.join('-')
+                                         }
+                               
+                      }else{
+                
+                     a[0] = args.return_date;
+                      }
+                     return a.join(' ');
+}
 export const urlsearch = async (params, args, type) => {
     let { from, to, depart_date, return_date, max_price, oneway, direct } = args;
           console.log(args)
-    const url = `https://booking-com15.p.rapidapi.com/api/v1/flights/searchFlights?${params}`;
-    console.log(url);
-    console.log(depart_date)
-    console.log(max_price);
-    const options = {
-        method: 'GET',
-        headers: {
-            'x-rapidapi-key': '861ce91f0bmshd39d7d30964a28fp155848jsna216b184b649',
-            'x-rapidapi-host': 'booking-com15.p.rapidapi.com',
-            'Content-Type': 'application/json'
-        }
-    };
+    // const url = `https://booking-com15.p.rapidapi.com/api/v1/flights/searchFlights?${params}`;
+    // console.log(url);
+    // console.log(depart_date)
+    // console.log(max_price);
+    // const options = {
+    //     method: 'GET',
+    //     headers: {
+    //         'x-rapidapi-key': '861ce91f0bmshd39d7d30964a28fp155848jsna216b184b649',
+    //         'x-rapidapi-host': 'booking-com15.p.rapidapi.com',
+    //         'Content-Type': 'application/json'
+    //     }
+    // };
     try {
-        const response = await fetch(url, options);
-        const json = await response.json();
-        if (!response.ok) {
-            return {
-                success: false,
-                tool: "search_flights",
-                args,
-                data: null,
-                error: {
-                    code: "API_ERROR",
-                    message: json?.message ||
-                        "Flight search failed",
-                },
-            };
-        }
-        const flights = json?.data?.flightOffers?.map((flight) => ({
+        // const response = await fetch(url, options);
+            
+        // const json = await response.json();
+        //     console.log( json, "api responseee")
+        // if (!response.ok) {
+        //     return {
+        //         success: false,
+        //         tool: "search_flights",
+        //         args,
+        //         data: null,
+        //         error: {
+        //             code: "API_ERROR",
+        //             message: json?.message ||
+        //                 "Flight search failed",
+        //         },
+        //     };
+        // }
+        // json?.data?.flightOffers
+  const flights = flightsData.map((flight) =>  {
+             const newDTime = calcDTime(flight.departureTime,args);
+             const newATime = calcATime(newDTime,flight.arrivalTime,args);
+  return {
+           
+
             token: flight.token,
             price: Number(flight.priceBreakdown
-                ?.total?.units || 0),
+                ?.total?.units || flight.price),
             airline: flight.segments?.[0]
                 ?.legs?.[0]
                 ?.carriersData?.[0]
                 ?.name ||
-                "Unknown",
+                 flight.airline,
             departure: flight.segments?.[0]
                 ?.departureAirport
-                ?.code,
+                ?.code || from,
             arrival: flight.segments?.[0]
                 ?.arrivalAirport
-                ?.code,
+                ?.code || to,
             departureTime: flight.segments?.[0]
-                ?.departureTime,
+                ?.departureTime || newDTime,
             arrivalTime: flight.segments?.[0]
-                ?.arrivalTime,
+                ?.arrivalTime || newATime,
             stops: flight.segments?.[0]
-                ?.legs?.length - 1,
+                ?.legs?.length - 1||flight.stops,
             direct: flight.segments?.[0]
                 ?.legs?.length ===
-                1,
-        })) || [];
+                1 || flight.direct,
+        }}) || [];
+    
         let filteredFlights = flights.slice(flights.length - 5, flights.length);
         if (typeof max_price ===
             "number") {

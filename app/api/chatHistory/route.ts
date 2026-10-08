@@ -5,6 +5,7 @@ import redis from '../../../lib/redis.js'
 export async function POST(req: NextRequest) {
   const type = req.headers.get("x-type");
   const index : any = req.headers.get("x-historyIndex");
+  const userId : any = req.headers.get('x-userId')
   const chunkIndex : any = req.headers.get('x-chunkIndex');
     
      console.log(type,index,chunkIndex)
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
          }
 
 
-    await redis.zadd("indexes", {
+    await redis.zadd(userId, {
       score: Date.now(),
       member: index,
     });
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
     });
   }
      if(type === "getIndex"){
-          const ArrIndex = await redis.zrange("indexes", 0, -1, {
+          const ArrIndex = await redis.zrange(userId, 0, -1, {
   rev: true
 });
 

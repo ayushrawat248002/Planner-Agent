@@ -4,7 +4,7 @@ import { modifyPlan } from "./planmodifier.js";
 import { modifyHotels } from "./hotelsearchmodifier.js";
 import { modifyFlights } from "./flightmodifier.js";
 import { getPreviousArgs, getMissingFields } from "./Previousargs+missingfield.js";
-
+import { Travelplanner } from "../planners/travelPlanner.js";
 
 
 
@@ -69,22 +69,73 @@ export const replanner = async(
    */
 
   if (activeTask === "search_flights") {
-             
+           console.log(previousArgs, 'PREVIOS arGS')      
     const args = await modifyFlights(
       userMessage,
       previousArgs,
       missing
     );
-            console.log(args, 'asdasdasdasdasda')
+  let istrue = false;
+ let pass = true;
+console.log(args, "asdasdasdasdasdsdsaa");
 
-    return {
-      steps: [
-        {
-          tool: "search_flights",
-          args,
-        },
-      ],
-    };
+const invalidRoute =
+  args.from &&
+  args.to &&
+  args.from.toLowerCase() === args.to.toLowerCase();
+ 
+  const invalid = args.depart_date === args.return_date ? true : false;
+
+const missingRoute =
+  !args.from || !args.to;
+
+   const returnFlightRegex =
+  /\b(?:return|returning|return\s+date|returning\s+date|return\s+flight|returning\s+flight|return\s+journey|return\s+journey\s+date|return\s+travel|return\s+trip|flight\s+back|journey\s+back)\b/i;
+           const match = returnFlightRegex.test(userMessage);
+                    if(match && !args.return_date){
+                      pass = false
+                    }
+
+if (
+  !invalidRoute && pass &&
+  !missingRoute &&
+  !invalid &&
+  args.from &&
+  args.to
+) {
+  istrue = true;
+}
+
+if (istrue) {
+  return {
+    steps: [
+      {
+        tool: "search_flights",
+        args,
+      },
+    ],
+  };
+} else {
+  const aa = await Travelplanner([
+    {
+      role: "user",
+      content: userMessage,
+    },
+  ]);
+
+  console.log("Travelplanner returned:", aa);
+
+  const planner = JSON.parse(aa)
+             console.log(planner)
+  if (!planner || !Array.isArray(planner.steps)) {
+    throw new Error(
+      `Invalid Travelplanner response: ${JSON.stringify(planner)}`
+    );
+  }
+
+  return planner;
+}
+   
   }
 
 

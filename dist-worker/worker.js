@@ -37,10 +37,11 @@ const streamText = async (arr) => {
 
 let messageHistory = [];
 
-parentPort.on("message", async (job) => {
+parentPort.on("message", async ({job, reqId}) => {
+   console.log(job,reqId)
   try {
     if (messageHistory.length === 0) {
-      const history = await redis.get("Userhistory");
+      const history = await redis.get(`Userhistory${job.id}`);
      
       if (history) {
         messageHistory =
@@ -66,7 +67,8 @@ parentPort.on("message", async (job) => {
       messageHistory,
          rawUserMessage,
       updateGeneral,
-      job.id
+      job.id,
+      reqId
     );
 
     
@@ -87,7 +89,7 @@ parentPort.on("message", async (job) => {
 
 
 
-    await redis.set("Userhistory", messageHistory);
+    await redis.set(`Userhistory${job.id}`, messageHistory);
 
     messageHistory = [];
 

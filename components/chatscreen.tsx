@@ -984,7 +984,49 @@ const HotelCard =  React.memo( ({ data,hotelcardCallbackRef, hotelcardArgscallba
 })
 
 
+function createFlightText(data : any) {
+  const args = data?.args;
+  const flights = data?.result ?? [];
 
+  if (!args) return "";
+
+  const {
+    from,
+    to,
+    depart_date,
+    return_date,
+    max_price,
+    oneway,
+    direct
+  } = args;
+
+  let text = `Here are the available flights from ${from} to ${to}`;
+
+  if (depart_date) {
+    text += ` departing on ${depart_date}`;
+  }
+
+  if (!oneway && return_date) {
+    text += ` with a return on ${return_date}`;
+  }
+
+  if (direct === true) {
+    text += ` (direct flights only)`;
+  }
+
+  if (max_price != null) {
+    text += ` within a maximum price of ₹${max_price}`;
+  }
+
+  if (!flights.length) {
+    text += `. Unfortunately, no flights were found.`;
+    return text;
+  }
+
+  text += `. I found ${flights.length} flight${flights.length > 1 ? "s" : ""}:`;
+
+  return text;
+}
 
 
 export default function Chatscreen() {
@@ -1020,7 +1062,7 @@ export default function Chatscreen() {
    const haslocaldataLoaded = useRef(false);
    const historyBarRef = useRef<any>(null);
    const [ historyBar, sethistoryBar] = useState<any>(false)
- 
+   const userIdRef = useRef<any>(null);
 
 const testData: any = {
   1: [
@@ -1309,7 +1351,12 @@ useLayoutEffect(() => {
  useEffect(() => {
             const ishistory =  localStorage.getItem('localdata') ?? false;
                     console.log(ishistory, 'ishistory')
-         
+         const userId : any = localStorage.getItem('userId') ?? null;
+                console.log(userId, 'userId')
+          if( userId && userId !== 'undefined'){
+              userIdRef.current = JSON.parse(userId)
+              console.log(userId, 'userId')
+          }
                      
 
                    const Load = async() => {
@@ -1318,11 +1365,13 @@ useLayoutEffect(() => {
                                       headers : {
                                       'x-historyIndex' : '',
                                       'x-type' : 'getIndex',
-                                      'x-chunkIndex' :  ``
+                                      'x-chunkIndex' :  ``,
+                                      'x-userId' : userIdRef.current
                                      },
                                      body : null
                                    });
-                                   
+                               
+                                   if(!response)return;
                                const redishistoryIndexes : any = await response.json();
                               
                                console.log(redishistoryIndexes.data, 'data redis arr line 1311')
@@ -1355,6 +1404,7 @@ useLayoutEffect(() => {
         headers: {
           "x-historyIndex": historyIndexRef.current,
           "x-type": "create",
+          "x-userId" : userIdRef.current
         },
         body: JSON.stringify(pendingMessages),
       });
@@ -1364,6 +1414,8 @@ useLayoutEffect(() => {
       }
          localStorage.removeItem('localdata');
          localStorage.removeItem(historyIndexRef.current);
+         localStorage.removeItem('chatkey')
+
          
       oldMessageLength.current += pendingMessages.length;
       messagesRef.current = [];
@@ -1500,17 +1552,22 @@ useEffect(() => {
 
            const task = chunk?.task;
            const data = chunk?.answer;
+              
                 
                    if(task === 'search_flights' || task === 'search_hotels'){
+                          console.log(data)
                              if(task === 'search_flights'){
+                                     
+                                    text += createFlightText(data)
                                      setflight(data)
                              }  else{
+                                // text+= createHotelText(data)
                                 sethotel(data)
                              }
                              continue;
                    }
-                  
-              const splitted = data.result ? chunk.answer.result.split(' ') : data.split(' ');
+                   console.log(data.result, 'result')
+              const splitted = data.result ? data.result.split(' ') : data.split(' ');
               if(Array.isArray(splitted)){    
               for(const word of splitted){
                          setOutput((prev) => prev.concat(` ${word}`));
@@ -1531,7 +1588,7 @@ useEffect(() => {
     if (!value.trim() || loading) return;
          
     cancelStream.current = false;
-    setLoading(true);
+         setLoading(true);  
     setOutput("");
 
     const userMessage: any = {
@@ -1547,31 +1604,40 @@ useEffect(() => {
 
     const controller = new AbortController();
     controllerRef.current = controller;
-     const index = historyIndexRef.current ?? crypto.randomUUID();
-     historyIndexRef.current = index;
+       const localindex : any = localStorage.getItem('chatkey') ?? null;
+     const index = historyIndexRef.current ? historyIndexRef.current :  localindex ? JSON.parse(localindex) : crypto.randomUUID();    
+      if(!localindex) {
+     localStorage.setItem('chatkey', JSON.stringify(index));
+      }
+       
+        historyIndexRef.current = index;
+        console.log(index)
 
-   
+
+  
     try {
       const res = await fetch("/api/ai/proxy", {
         method: "POST",
-        headers:{
-            'x-chatid' : index
-        },
         body: JSON.stringify({
           messages: updatedMessages,
         }),
         signal: controller.signal,
       });
 
+  
+
       const data : any = await res.json();
-      console.log(data.status, 'dadasc')
+      console.log(data);
+    
+              userIdRef.current = data?.userId;
+               localStorage.setItem('userId' , JSON.stringify(data?.userId))
            if ( data.status && ![200, 201].includes(data.status)) {
               setFormdisplay(true);
                   throw new Error()
 }
            setLoading(false);
 
-      const finalText = await stream(data);
+      const finalText = await stream(data?.result);
          if(finalText){
       setMessages((prev) => [
         ...prev,
@@ -1621,17 +1687,7 @@ useEffect(() => {
   setFormdisplay(false);
 }, []);
 
-useLayoutEffect(() => {
-  console.log("hit bar");
 
-  if (!historyBarRef.current) return;
-
-  if (historyBar) {
-    historyBarRef.current.style.translate = "0";
-  } else {
-    historyBarRef.current.style.translate = "-100px";
-  }
-}, [historyBar]);
 
 
   return (
@@ -1642,7 +1698,7 @@ useLayoutEffect(() => {
   <header
     className={`${
       displayForm ? "blur-[90px]" : "blur-none"
-    } shrink-0 border-b border-slate-800 px-6 py-4`}
+    } ml-15 shrink-0 border-b border-slate-800 px-6 py-4`}
   >
     <h1 className="text-2xl font-bold">
       ✈️ Travel Planner AI
@@ -1673,59 +1729,211 @@ useLayoutEffect(() => {
     } flex flex-1 min-h-0`}
   >
     {/* Sidebar */}
-         <div className="w-1/5">
-    <div
-    ref={historyBarRef}
-    
-      className={` absolute -translate-x-25  ${!historyBar ? '' : 'z-10'} bg-black  w-25 h-full shrink-0 overflow-y-auto overflow-x-hidden border-r-2 border-white transition-all duration-500  ${
-        !showflight && !showhotel
-          ? "opacity-100"
-          : "opacity-0"
-      }`}
-    >
-      <ul>
-        {[...historyIndexArr]?.map((data: any, index: number) => {
-              const modifiedData = data?.split('').includes(' ');
-           
-                   const newdata = !modifiedData ? data?.split('').splice(0,7).join('').concat(' ').concat('.......') : data?.split(' ').slice(0,3).join(' ').concat(' ').concat('....');
-          return (<li
-            key={index}
-            className={`text-white  ${data === selectedHistoryIndex ? 'bg-red-400 hover:bg-red-400' : ''}  px-3 py-2 border-b hover:bg-blue-600 hover:text-white transition-all duration-300 ease-in-out cursor-pointer select-none border-b-1 border-white`}
-           onClick={async() => {
-                   if( data === selectedHistoryIndex)return; 
-                setMessages([]);
-                 oldMessageLength.current = 0;
-                 haslocaldataLoaded.current = false;
-                 currentHistoryLength.current = 0;
-                  historyIndexRef.current = data;
-                       setchunkIndex(1);
-                           setselectedHistoryIndex(data);
-                                  }
-                                }>
-            {`history ${(historyIndexArr.length - 1) - index}` }
-          </li>
-        )
-      
-      })}
-      </ul>
-     
-    </div>
-     <button
-  className="text-white pl-3 pt-3 text-nowrap hover:text-red-400"
-  onClick={() => {
-    sethistoryBar(true);
-  }}
+        {/* HISTORY SIDEBAR */}
+
+{/* Floating history button */}
+{!historyBar && (
+  <button
+    onClick={() => sethistoryBar(true)}
+    className="
+      absolute left-4 top-4 z-30
+      flex h-10 w-10 items-center justify-center
+      rounded-xl
+      border border-slate-700
+      bg-slate-900/90
+      text-slate-300
+      shadow-lg shadow-black/20
+      backdrop-blur
+      transition-all duration-200
+      hover:border-slate-600
+      hover:bg-slate-800
+      hover:text-white
+      hover:scale-105
+      active:scale-95
+    "
+    aria-label="Open chat history"
+  >
+    <span className="text-lg">☰</span>
+  </button>
+)}
+
+{/* Sidebar */}
+<aside
+  ref={historyBarRef}
+  className={`
+    absolute left-0 top-0 z-40
+    h-full w-[280px]
+    border-r border-slate-800
+    bg-slate-950/95
+    shadow-2xl shadow-black/40
+    backdrop-blur-xl
+
+    transition-transform duration-300 ease-out
+
+    ${
+      historyBar
+        ? "translate-x-0"
+        : "-translate-x-full"
+    }
+
+    ${
+      !showflight && !showhotel
+        ? "opacity-100"
+        : "opacity-0 pointer-events-none"
+    }
+  `}
 >
-  History -→
-</button>
-             <div
-      onClick={() => sethistoryBar(false)}
-      className={`h-6 w-6 bg-white absolute ml-26 top-17  ${!historyBar ? 'hidden' : 'block'} text-bold rounded-full text-black text-center  hover:scale-105 hover:bg-red-600 hover:text-white transition-all duration-250 ease-in-out select-none cursor-pointer`}
-    >
-      X
-    </div>
+  {/* Sidebar header */}
+  <div className="flex h-[73px] items-center justify-between border-b border-slate-800 px-4">
+    
+    <div className="flex items-center gap-3">
+      <div
+        className="
+          flex h-9 w-9 items-center justify-center
+          rounded-xl
+          bg-slate-800
+          text-slate-300
+        "
+      >
+        💬
+      </div>
+
+      <div>
+        <h2 className="text-sm font-semibold text-white">
+          Recent chats
+        </h2>
+
+        <p className="text-xs text-slate-500">
+          Your conversations
+        </p>
+      </div>
     </div>
 
+    {/* Close */}
+    <button
+      onClick={() => sethistoryBar(false)}
+      className="
+        flex h-8 w-8 items-center justify-center
+        rounded-lg
+        text-slate-500
+        transition
+        hover:bg-slate-800
+        hover:text-white
+      "
+      aria-label="Close chat history"
+    >
+      ✕
+    </button>
+  </div>
+
+
+  {/* History list */}
+  <div className="h-[calc(100%-73px)] overflow-y-auto px-2 py-3 scrollbar-hide">
+    
+    {historyIndexArr.length === 0 ? (
+      <div className="flex h-full flex-col items-center justify-center px-6 text-center">
+        <div className="mb-3 text-3xl opacity-40">
+          💬
+        </div>
+
+        <p className="text-sm text-slate-400">
+          No conversations yet
+        </p>
+
+        <p className="mt-1 text-xs text-slate-600">
+          Your recent chats will appear here
+        </p>
+      </div>
+    ) : (
+      <div className="space-y-1">
+        {[...historyIndexArr].map(
+          (data: any, index: number) => {
+
+            const modifiedData = data?.includes(" ");
+
+            const title = !modifiedData
+              ? `${data?.slice(0, 18)}...`
+              : `${data
+                  ?.split(" ")
+                  .slice(0, 5)
+                  .join(" ")}...`;
+
+            const selected = data === selectedHistoryIndex;
+
+            return (
+              <button
+                key={index}
+                onClick={() => {
+                  if (data === selectedHistoryIndex) return;
+
+                  setMessages([]);
+
+                  oldMessageLength.current = 0;
+                  haslocaldataLoaded.current = false;
+                  currentHistoryLength.current = 0;
+
+                  historyIndexRef.current = data;
+
+                  setchunkIndex(1);
+                  setselectedHistoryIndex(data);
+
+                  // Close drawer after selecting
+                  sethistoryBar(false);
+                }}
+                className={`
+                  group
+                  flex w-full items-center gap-3
+                  rounded-xl
+                  px-3 py-3
+                  text-left
+                  transition-all duration-200
+
+                  ${
+                    selected
+                      ? "bg-slate-800 text-white"
+                      : "text-slate-400 hover:bg-slate-900 hover:text-slate-200"
+                  }
+                `}
+              >
+                {/* Chat icon */}
+                <div
+                  className={`
+                    flex h-8 w-8 shrink-0 items-center justify-center
+                    rounded-lg
+                    text-sm
+                    ${
+                      selected
+                        ? "bg-blue-500/15 text-blue-400"
+                        : "bg-slate-900 text-slate-500 group-hover:text-slate-300"
+                    }
+                  `}
+                >
+                  💬
+                </div>
+
+                {/* Title */}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">
+                    {title}
+                  </p>
+
+                  <p className="mt-0.5 text-[11px] text-slate-600">
+                    Conversation {historyIndexArr.length - index}
+                  </p>
+                </div>
+
+                {/* Selected indicator */}
+                {selected && (
+                  <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-blue-400" />
+                )}
+              </button>
+            );
+          }
+        )}
+      </div>
+    )}
+  </div>
+</aside>
       
 
 

@@ -7,25 +7,26 @@ const controllers = new Map();
 process.on("message", async (msg) => {
   if (msg.type === "start") {
     const controller = new AbortController();
-
+     console.log(msg.jobId)
     controllers.set(msg.jobId, controller);
      const arr = []
     try {
       const result = await pool.run({
         job: msg.job,
         signal: controller.signal,
+         reqId : msg.jobId,
         onToken : (token) => {arr.push(token)}
       });
 
       console.log(arr, 'ARrratttt')
-       console.log(msg.jobId)
+     
       
        process.send({
         jobId: msg.jobId,
         result : arr
       });
     } catch (err) {
-      console.log('error')
+      console.log('error hittted')
       process.send({
         jobId: msg.jobId,
         error: err.message,

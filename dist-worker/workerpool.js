@@ -12,9 +12,10 @@ export class WorkerPool {
             this.idleWorkers.push( new Worker( path.resolve("dist-worker/worker.js")))
         }
     }
-    run({ job, onToken, signal }) {
+    run({ job, signal, reqId, onToken }) {
+        console.log(reqId, 'rasdafasfd')
         return new Promise((resolve, reject) => {
-            this.queue.push({ job, onToken, signal, resolve, reject });
+            this.queue.push({ job, onToken, signal, reqId, resolve, reject });
             this.schedule();
         });
     }
@@ -24,13 +25,16 @@ export class WorkerPool {
         console.log(this.idleWorkers.length);
         const worker = this.idleWorkers.pop();
         const task = this.queue.shift();
+        console.log(task);
         this.busyWorkers.add(worker);
         console.log(this.idleWorkers.length);
+        console.log(worker);
         this.execute(worker, task);
         console.log(this.idleWorkers.length);
     }
     execute(worker, task) {
-        const { job, onToken, signal, resolve, reject } = task;
+        const { job, onToken, signal, reqId, resolve, reject } = task;
+              console.log(reqId)
         let settled = false;
         
         const onMessage = (msg) => {
@@ -69,7 +73,10 @@ export class WorkerPool {
             this.schedule();
         };
         worker.on("message", onMessage);
-        worker.postMessage(job);
+       worker.postMessage({
+  job,
+  reqId
+});
         signal.addEventListener("abort", onAbort, { once: true });
     }
 }
