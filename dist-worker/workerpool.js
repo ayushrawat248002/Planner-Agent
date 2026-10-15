@@ -72,6 +72,8 @@ export class WorkerPool {
             this.idleWorkers.push(new Worker (path.resolve("dist-worker/worker.js")));
             this.schedule();
         };
+         console.log('heyyyy it started');
+  
         worker.on("message", onMessage);
        worker.postMessage({
   job,

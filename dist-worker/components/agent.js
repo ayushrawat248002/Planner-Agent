@@ -109,12 +109,9 @@ function configureWorkflow(step, result, workflow, domain, reqId) {
             )
             : result.args;
 
-    console.log("Previous args:", prevargs);
-    console.log("Current args:", result.args);
-    console.log("Final args:", finalArgs);
-
+    
     workflow[step] = {
-        results: {
+        results: step === 'generatePlan' ? {result : result.data , args : finalArgs} : {
             result: isSameRequest
                 ? [
                     ...previousResults,
@@ -160,10 +157,11 @@ const summarizeResults = (workflowContext) => {
     if (workflowContext.completedTasks?.includes("search_hotels")) {
       
           sections.push({task : "search_hotels" , answer : workflowContext.search_hotels.results})
-    }
+    }       
 
     if(workflowContext.completedTasks?.includes("generatePlan")){
-         sections.push({ task : "generatePlan", answer : workflowContext['generatePlan'].results})
+         sections.push({ task : "generatePlan", answer : {result : workflowContext["generatePlan"]?.results?.result, args : {...workflowContext["generatePlan"]?.results?.args}  }})
+           workflowContext["generatePlan"].results.result = '';
     }
     return sections;
 };
@@ -451,7 +449,7 @@ async function runAdaptiveAgent(userMessageArray, usermessage, fn, userId, reqId
                  
             result = {
                 ...result,
-                data: [   ...arr1 , ...arr2]
+                data: [   ...arr2 , ...arr1]
             };
         }else{
               result = {

@@ -75,6 +75,26 @@ export const replanner = async(
       previousArgs,
       missing
     );
+ 
+ if (args) {
+    const date = new Date().toISOString().split("T")[0];
+    const [year, month] = date.split("-");
+
+    const parseDate = (value) => {
+        if (!value) return value;
+
+        // Only convert "27", "28", "5", etc.
+        if (/^\d{1,2}$/.test(value)) {
+            return `${year}-${month}-${value.padStart(2, "0")}`;
+        }
+
+        // Keep everything else unchanged
+        return value;
+    };
+
+    args.depart_date = parseDate(args.depart_date);
+    args.return_date = parseDate(args.return_date);
+}
   let istrue = false;
  let pass = true;
 console.log(args, "asdasdasdasdasdsdsaa");
@@ -84,7 +104,7 @@ const invalidRoute =
   args.to &&
   args.from.toLowerCase() === args.to.toLowerCase();
  
-  const invalid = args.depart_date === args.return_date ? true : false;
+  const invalid = args.depart_date !== null && args.return_date !== null && args.depart_date === args.return_date ? true : false;
 
 const missingRoute =
   !args.from || !args.to;
@@ -126,6 +146,27 @@ if (istrue) {
   console.log("Travelplanner returned:", aa);
 
   const planner = JSON.parse(aa)
+      if (planner.steps) {
+    const date = new Date().toISOString().split("T")[0];
+    const [year, month] = date.split("-");
+
+    const depart = planner.steps[0].depart_date;
+    const arrival = planner.steps[0].return_date;
+
+    if (depart) {
+        planner.steps[0].depart_date =
+            /^\d{1,2}$/.test(depart)
+                ? `${year}-${month}-${depart.padStart(2, "0")}`
+                : depart;
+    }
+
+    if (arrival) {
+        planner.steps[0].return_date =
+            /^\d{1,2}$/.test(arrival)
+                ? `${year}-${month}-${arrival.padStart(2, "0")}`
+                : arrival;
+    }
+}
              console.log(planner)
   if (!planner || !Array.isArray(planner.steps)) {
     throw new Error(

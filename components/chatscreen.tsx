@@ -12,13 +12,21 @@ import { clearInterval } from "timers";
 
 const HotelFormCard = React.memo( ({data }: any) => {
   const args  = data;
-       console.log(args,'adsa line 613')
+
+    
   const [location, setLocation] = useState(args?.location ?? "");
   const [checkInDate, setCheckInDate] = useState(args?.checkIn ?? "");
   const [checkOutDate, setCheckOutDate] = useState(args?.checkOut ?? "");
   const [days, setDays] = useState(args?.days ?? "");
   const [totalrooms, setTotalrooms] = useState(args?.totalrooms ?? 1);
-
+   
+  useEffect(() => {
+  setLocation(data?.location ?? "");
+  setCheckInDate(data?.checkIn ?? "");
+  setCheckOutDate(data?.checkOut ?? "");
+  setDays(data?.days ?? "");
+  setTotalrooms(data?.totalrooms ?? 1);
+}, [data]);
 
   return (
     <div className="lg:w-full scale-65 max-w-4xl min-w-[400px] rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-6">
@@ -82,7 +90,7 @@ const HotelFormCard = React.memo( ({data }: any) => {
       <div className="mb-4 min-w-0 text-black">
 
         <label className="mb-2 block text-sm font-medium text-gray-700">
-          Hotel / Location
+          {location}
         </label>
 
         <input
@@ -1028,6 +1036,20 @@ function createFlightText(data : any) {
   return text;
 }
 
+ async function loadUserID(){
+     
+   const response =  await fetch('/api/ai/proxy',{
+     method : 'POST',
+     headers : {
+       'x-type' : 'getUserId'
+     }
+   }) ;
+        
+   const parsed  = await  response.json();
+             if(parsed.status === 401)return null;
+   return parsed.user.userId;            
+}
+
 
 export default function Chatscreen() {
 
@@ -1280,6 +1302,10 @@ const testData: any = {
   const callback = useCallback((text: string) => {
   setTypeform(text);
 }, []);
+ 
+  const changeDisplay = useCallback(() => {
+  setFormdisplay(false);
+}, []);
 
  const hotelcardCallbackRef = useCallback((index : any,el : any) => {
               hotelref.current[index] = el;
@@ -1346,12 +1372,14 @@ useLayoutEffect(() => {
   };
 }, [hoteldata]);
 
-
+ 
 
  useEffect(() => {
             const ishistory =  localStorage.getItem('localdata') ?? false;
                     console.log(ishistory, 'ishistory')
-         const userId : any = localStorage.getItem('userId') ?? null;
+         const userId : any = localStorage.getItem('userId')  ?? null
+                
+                   
                 console.log(userId, 'userId')
           if( userId && userId !== 'undefined'){
               userIdRef.current = JSON.parse(userId)
@@ -1360,6 +1388,12 @@ useLayoutEffect(() => {
                      
 
                    const Load = async() => {
+                           if (!userId){
+                                    const res : any =  await loadUserID();
+                                           if(!res)return;
+                                       userIdRef.current = res ;
+               localStorage.setItem('userId' , JSON.stringify(res))
+                           }
                          const response =   await fetch(`/api/chatHistory`,{
                                      method:'POST',
                                       headers : {
@@ -1530,6 +1564,7 @@ useEffect(() => {
       top: chatRef.current.scrollHeight,
       behavior: "smooth",
     });
+    scrollToposition.current = false;
   }, [messages, output]);
 
   const stream = async (queue: any) => {
@@ -1649,7 +1684,7 @@ useEffect(() => {
     }
     
    setOutput('')
-
+  
     } catch (err : any) {
          setLoading(false);
          console.log(err, 'eroorer')
@@ -1683,9 +1718,7 @@ useEffect(() => {
         textareaRef.current.scrollHeight + "px";
     }
   };
-  const changeDisplay = useCallback(() => {
-  setFormdisplay(false);
-}, []);
+
 
 
 

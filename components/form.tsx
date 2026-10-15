@@ -1,28 +1,33 @@
 'use client';
 
 import Link from 'next/link';
-
+import { useState } from 'react';
 import React, { ReactNode } from 'react';
 import { useRouter } from "next/navigation";
 
 const UserForm = ({callback,changedisplay, typePage}:{callback : any, changedisplay : any, typePage: string}) => {
   const router = useRouter()
-  
+   const [loading, setloading] = useState(false);
   const handlesubmit = async(e : React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
+        setloading(true)
     const fromdata = new FormData(e.currentTarget);
-    
+      
     const result = await fetch(typePage === 'login' ? '/api/login' : '/api/register',{
       method : 'POST',
       body : fromdata
     });
     const finalresult = await result.json();
+          setloading(false) 
 
     if(finalresult.sucess){
       changedisplay()
+    }else{
+          
+      window.alert(finalresult.mssg)
+            }
     }
-  }
+  
 
  
 return (
@@ -108,8 +113,11 @@ return (
             className="group relative mt-2 h-12 w-full overflow-hidden rounded-xl bg-gradient-to-r from-purple-500 via-fuchsia-500 to-pink-500 font-semibold text-white shadow-lg shadow-purple-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-purple-500/40 active:translate-y-0"
             type="submit"
           >
-            <span className="relative z-10">
+            <span className={` ${!loading ? 'relative' : 'hidden'} z-10`}>
               {typePage === "login" ? "Login" : "Create Account"}
+            </span>
+           <span className={` ${loading ? 'relative' : 'hidden'}  animate-pulse  z-10`}>
+                  loading .... 
             </span>
 
             <div className="absolute inset-0 -translate-x-full bg-white/20 transition-transform duration-500 group-hover:translate-x-full" />
@@ -124,7 +132,7 @@ return (
             <Link
               href=""
               onClick={() => callback('login')}
-              className="font-semibold text-purple-400 transition-colors hover:text-pink-400"
+              className="font-semibold  text-purple-400 transition-colors hover:text-pink-400"
             >
               Login
             </Link>

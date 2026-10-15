@@ -5,12 +5,13 @@ import userCreation from "@/lib/actions/userCreation";
 export async function POST(req: NextRequest) {
        
   const formData = await req.formData();
- 
-  const { userId, role } = await userCreation(formData);
+   let res;
+  const { userId, role , mssg } = await userCreation(formData);
         console.log(userId ,' ID of the user')
+        if(role && userId && !mssg){
   const token = await signJWT({ userId: userId.toString(), role  });
 
-    const res =  NextResponse.json({ sucess: true });
+     res =  NextResponse.json({ sucess: true });
 
   res.cookies.set({
     name: "auth",
@@ -21,6 +22,10 @@ export async function POST(req: NextRequest) {
     path: "/",
     maxAge: 60 * 60 * 24,
   });
+}else{
+  console.log(mssg)
+   res = NextResponse.json({sucess  : false, mssg : mssg})
+}
 
   return res;
 }

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const result = await userLogin(data);
 
   const { userId, sucess, mssg } = result;
-
+      console.log(mssg, sucess)
   if (userId && sucess) {
     const token = await signJWT({ userId, role: "user" });
 

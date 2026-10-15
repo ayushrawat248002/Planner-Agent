@@ -26,22 +26,25 @@ const CITY_TO_BOOKING = {
     kolkata: "CCU.AIRPORT",
     tokyo: "NRT.AIRPORT",
 };
- const calcDTime = (time,args) => {
+ const calcDTime = (time,args, type) => {
              const a = time.split('T');
-                     a[0] = args.depart_date;
+                     a[0] = type === 'departure' ? args.depart_date : args.return_date;
                      return a.join(' ');
 }
 
-const calcATime = (departingTime,time,args) => {
+const calcATime = (departingTime,time,args,type) => {
                 let b ;
                const a = time.split('T');
             
                     b = departingTime.split(' ');
-                      if(!args.return_date){
+                    const has = type === 'departure' ? args.depart_date : args.return_date
+                      if(!has){
                              const splitB = b[0].split('-');
                                  const splitATime = a[1].split(':');
                                  const splitBTime = b[1].split(':');
-                                         if(splitATime > splitBTime){
+                                   console.log(splitATime,'arrival');
+                                   console.log(splitBTime,'arrival')
+                                         if(splitATime[0] > splitBTime[0]){
                                                 a[0] = b[0]
                                          }else{
                                              const newDate =  parseInt(splitB[splitB.length - 1]) + 1;
@@ -50,14 +53,25 @@ const calcATime = (departingTime,time,args) => {
                                          }
                                
                       }else{
-                
-                     a[0] = args.return_date;
-                      }
+
+               
+                        const splitB = b[0].split('-')    
+                        const splitTime = b[1].split(':');
+                            const splt2 = a[1].split(':');
+                             if(splitTime[0] > splt2[0]){
+                                      const newdate =  parseInt(splitB[splitB.length - 1]) + 1;
+                                          splitB[splitB.length - 1] = newdate;
+                                          a[0] = splitB.join('-');
+                             }else{
+
+                     a[0] = type === 'departure' ? args.depart_date : args.return_date;
+                             } 
+                     }
                      return a.join(' ');
 }
 export const urlsearch = async (params, args, type) => {
     let { from, to, depart_date, return_date, max_price, oneway, direct } = args;
-          console.log(args)
+        
     // const url = `https://booking-com15.p.rapidapi.com/api/v1/flights/searchFlights?${params}`;
     // console.log(url);
     // console.log(depart_date)
@@ -90,8 +104,8 @@ export const urlsearch = async (params, args, type) => {
         // }
         // json?.data?.flightOffers
   const flights = flightsData.map((flight) =>  {
-             const newDTime = calcDTime(flight.departureTime,args);
-             const newATime = calcATime(newDTime,flight.arrivalTime,args);
+             const newDTime = calcDTime(flight.departureTime,args,type);
+             const newATime = calcATime(newDTime,flight.arrivalTime,args, type);
   return {
            
 

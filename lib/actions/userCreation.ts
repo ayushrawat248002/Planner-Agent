@@ -4,25 +4,64 @@ import User from '@/models/usermodel';
 import connectDB from '../mongodb';
 
 export default async function userCreation(formData: FormData) {
-  await connectDB();
+try {
+await connectDB();
 
-  const email = formData.get('email') as string;
-  const password = formData.get('password') as string;
 
-  if (!email || !password) {
-    throw new Error('Missing credentials');
-  }
+const email = formData.get('email');
+const password = formData.get('password');
 
-  const presentUser = await User.findOne({ email });
-  if (presentUser) {
-    throw new Error('User already exists');
-  }
-
-  const user = await User.create({ email, password });
-         console.log(user._id);
-  // ✅ return minimal data
+if (
+  typeof email !== 'string' ||
+  typeof password !== 'string' ||
+  !email.trim() ||
+  !password
+) {
   return {
-    userId: user._id,
-    role: "user",
+    userId: null,
+    role: null,
+    mssg: 'Missing credentials',
   };
+}
+
+const normalizedEmail = email.trim().toLowerCase();
+
+const presentUser = await User.findOne({
+  email: normalizedEmail,
+});
+
+if (presentUser) {
+  return {
+    userId: null,
+    role: null,
+    mssg: 'User already exists',
+  };
+}
+
+const user = await User.create({
+  email: normalizedEmail,
+  password,
+});
+
+return {
+  userId: user._id.toString(),
+  role: 'user',
+  mssg: null,
+};
+
+
+} catch (err: unknown) {
+
+
+
+return {
+  userId: null,
+  role: null,
+  mssg: err instanceof Error
+    ? err.message
+    : 'Something went wrong',
+};
+
+
+}
 }
